@@ -10,7 +10,7 @@ export class StreamerService {
     private readonly twitchService: TwitchService,
   ) {}
 
-  async search(q: string): Promise<string> {
+  async search(q: string): Promise<any> {
     if (q.length < 2) {
       throw new BadRequestException('검색어는 2글자 이상이어야 합니다.');
     }
@@ -18,7 +18,7 @@ export class StreamerService {
     const cacheKey = 'partyview:streamer:search:' + q;
     const cacheValue = await this.redisClient.get(cacheKey);
     if (cacheValue) {
-      return cacheValue;
+      return JSON.parse(cacheValue);
     }
 
     const access_token = await this.twitchService.getAppAccessToken();
@@ -44,11 +44,11 @@ export class StreamerService {
     return twitchData;
   }
 
-  async getStreamerByName(streamerName: string): Promise<string> {
+  async getStreamerByName(streamerName: string): Promise<any> {
     const cacheKey = 'partyview:streamer:name:' + streamerName;
     const cacheValue = await this.redisClient.get(cacheKey);
     if (cacheValue) {
-      return cacheValue;
+      return JSON.parse(cacheValue);
     }
 
     const access_token = await this.twitchService.getAppAccessToken();
@@ -76,11 +76,11 @@ export class StreamerService {
     return twitchData;
   }
 
-  async getStreamerByNameLive(streamerName: string): Promise<string> {
+  async getStreamerByNameLive(streamerName: string): Promise<any> {
     const cacheKey = 'partyview:streamer:live:name:' + streamerName;
     const cacheValue = await this.redisClient.get(cacheKey);
     if (cacheValue && cacheValue !== 'null') {
-      return cacheValue;
+      return JSON.parse(cacheValue);
     } else if (cacheValue === 'null') {
       throw new BadRequestException('스트리머가 현재 방송 중이지 않습니다');
     }
@@ -112,7 +112,7 @@ export class StreamerService {
   }
 
   // FIXME: JSON이 text/html로 리턴되는 현상 수정 필요
-  async getStreamerByNameTwip(streamerName: string): Promise<string> {
+  async getStreamerByNameTwip(streamerName: string): Promise<any> {
     const cacheKey = 'partyview:streamer:twip:name:' + streamerName;
     const cacheValue = await this.redisClient.get(cacheKey);
     if (cacheValue) {
@@ -137,19 +137,101 @@ export class StreamerService {
     return twipResponse?.data;
   }
 
-  async getStreamerByNameTgd(streamerName: string): Promise<string> {
-    return this.redisClient.get(streamerName);
+  async getStreamerByNameTgd(streamerName: string): Promise<any> {
+    const cacheKey = 'partyview:streamer:tgd:name:' + streamerName;
+    const cacheValue = await this.redisClient.get(cacheKey);
+    if (cacheValue && cacheValue !== 'null') {
+      return JSON.parse(cacheValue);
+    } else if (cacheValue === 'null') {
+      throw new BadRequestException('해당 스트리머는 트게더 회원이 아닙니다.');
+    }
+
+    const tgdResponse = await axios
+      .get('https://tgd.kr/api/v2/board/' + streamerName)
+      .then((response) => {
+        if (response.data?.success) {
+          this.redisClient.set(
+            cacheKey,
+            JSON.stringify(response.data?.data),
+            'EX',
+            60 * 60 * 24 * 30,
+          );
+          return response.data?.data;
+        } else {
+          this.redisClient.set(cacheKey, 'null', 'EX', 60 * 60 * 24 * 30);
+          throw new NotFoundException(
+            '해당 스트리머는 트게더 회원이 아닙니다.',
+          );
+        }
+      })
+      .catch((error) => {
+        this.redisClient.set(cacheKey, 'null', 'EX', 60 * 60 * 24 * 30);
+        throw new NotFoundException('해당 스트리머는 트게더 회원이 아닙니다.');
+      });
+
+    return tgdResponse;
   }
 
-  async getStreamerById(streamerId: string): Promise<string> {
-    return this.redisClient.get(streamerId);
+  async getStreamerById(streamerId: number): Promise<any> {
+    const cacheKey = 'partyview:streamer:id:' + streamerId;
+    const cacheValue = await this.redisClient.get(cacheKey);
+    if (cacheValue) {
+      return JSON.parse(cacheValue);
+    }
+
+    const access_token = await this.twitchService.getAppAccessToken();
+    const twitchResponse = await axios.get(
+      'https://api.twitch.tv/helix/users?id=' + streamerId,
+      {
+        headers: {
+          'Client-ID': process.env.TWITCH_CLIENT_ID,
+          Authorization: `Bearer ${access_token}`,
+        },
+      },
+    );
+    const twitchData = twitchResponse.data?.data?.[0];
+    if (!twitchData) {
+      throw new NotFoundException('스트리머를 찾을 수 없습니다.');
+    }
+
+    await this.redisClient.set(
+      cacheKey,
+      JSON.stringify(twitchData),
+      'EX',
+      60 * 60 * 24,
+    );
+    return twitchData;
   }
 
-  async getStreamerByIdTwip(streamerId: string): Promise<string> {
-    return this.redisClient.get(streamerId);
-  }
+  async getStreamerByIdLive(streamerId: number): Promise<any> {
+    const cacheKey = 'partyview:streamer:live:id:' + streamerId;
+    const cacheValue = await this.redisClient.get(cacheKey);
+    if (cacheValue && cacheValue !== 'null') {
+      return JSON.parse(cacheValue);
+    }
 
-  async getStreamerByIdTgd(streamerId: string): Promise<string> {
-    return this.redisClient.get(streamerId);
+    const access_token = await this.twitchService.getAppAccessToken();
+    const twitchResponse = await axios.get(
+      'https://api.twitch.tv/helix/streams?user_id=' + streamerId,
+      {
+        headers: {
+          'Client-ID': process.env.TWITCH_CLIENT_ID,
+          Authorization: `Bearer ${access_token}`,
+        },
+      },
+    );
+    const twitchData = twitchResponse.data?.data?.[0];
+    if (!twitchData) {
+      await this.redisClient.set(cacheKey, 'null', 'EX', 60 * 3);
+      throw new BadRequestException('스트리머가 현재 방송 중이지 않습니다');
+    }
+
+    await this.redisClient.set(
+      cacheKey,
+      JSON.stringify(twitchData),
+      'EX',
+      60 * 3,
+    );
+    return twitchData;
   }
 }
