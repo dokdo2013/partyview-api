@@ -62,17 +62,6 @@ export class Response403<T> implements CommonResponse<T> {
   data: T;
 }
 
-export class Response404<T> implements CommonResponse<T> {
-  @ApiProperty({ example: 404 })
-  status: number;
-
-  @ApiProperty({ example: '요청하신 정보가 존재하지 않습니다.' })
-  message: string;
-
-  @ApiProperty()
-  data: T;
-}
-
 export class Response500<T> implements CommonResponse<T> {
   @ApiProperty({ example: 500 })
   status: number;
@@ -88,6 +77,7 @@ interface ApiOptions {
   statusCode: number;
   isArray: boolean;
   nullable: boolean;
+  error?: string;
 }
 
 export function ApiResponseType<T>(
@@ -115,4 +105,103 @@ export function ApiResponseType<T>(
   });
 
   return ApiResponseTypeClass as Type<ApiResponseTypeClass>;
+}
+
+export interface CommonExceptionDto {
+  statusCode: number;
+  error: string;
+}
+
+export interface CommonException<T> {
+  statusCode: number;
+  message: T;
+  error: string;
+}
+
+export function ApiExceptionType<T>(
+  classRef: Type<T>,
+  message: string,
+  options?: Partial<ApiOptions>,
+): Type<CommonExceptionDto> {
+  abstract class ApiExceptionTypeClass implements CommonExceptionDto {
+    @ApiProperty({
+      type: Number,
+      example: options?.statusCode ?? 400,
+    })
+    statusCode: number;
+
+    @ApiProperty({
+      type: classRef,
+      example: message,
+    })
+    message: T;
+
+    @ApiProperty({
+      type: String,
+      example: options?.error ?? 'Bad Request',
+    })
+    error: string;
+  }
+
+  Object.defineProperty(ApiExceptionTypeClass, 'name', {
+    value: `${classRef.name}Type`,
+    writable: false,
+  });
+
+  return ApiExceptionTypeClass as Type<ApiExceptionTypeClass>;
+}
+
+export class commonExceptionType<T> implements CommonExceptionDto {
+  @ApiProperty({ example: 400 })
+  statusCode: number;
+
+  @ApiProperty()
+  message: T;
+
+  @ApiProperty({ example: 'Bad Request' })
+  error: string;
+}
+
+export class NotBroadcastingException<T> implements CommonExceptionDto {
+  @ApiProperty({ example: 400 })
+  statusCode: number;
+
+  @ApiProperty()
+  message: T;
+
+  @ApiProperty({ example: 'Bad Request' })
+  error: string;
+}
+
+export class Response404<T> implements CommonExceptionDto {
+  @ApiProperty({ example: 404 })
+  statusCode: number;
+
+  @ApiProperty()
+  message: T;
+
+  @ApiProperty({ example: 'Not Found' })
+  error: string;
+}
+
+export class TwipException<T> implements CommonExceptionDto {
+  @ApiProperty({ example: 404 })
+  statusCode: number;
+
+  @ApiProperty()
+  message: T;
+
+  @ApiProperty({ example: 'Not Found' })
+  error: string;
+}
+
+export class TgdException<T> implements CommonExceptionDto {
+  @ApiProperty({ example: 404 })
+  statusCode: number;
+
+  @ApiProperty()
+  message: T;
+
+  @ApiProperty({ example: 'Not Found' })
+  error: string;
 }

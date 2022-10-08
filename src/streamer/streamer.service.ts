@@ -2,6 +2,7 @@ import { InjectRedis } from '@nestjs-modules/ioredis';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import axios from 'axios';
 import Redis from 'ioredis';
+import { StreamerSearchDto } from './dto/streamer-search.dto';
 import { TwitchService } from './twitch.service';
 
 export class StreamerService {
@@ -10,7 +11,7 @@ export class StreamerService {
     private readonly twitchService: TwitchService,
   ) {}
 
-  async search(q: string): Promise<any> {
+  async search(q: string): Promise<StreamerSearchDto> {
     if (q.length < 2) {
       throw new BadRequestException('검색어는 2글자 이상이어야 합니다.');
     }
@@ -143,7 +144,9 @@ export class StreamerService {
     if (cacheValue && cacheValue !== 'null') {
       return JSON.parse(cacheValue);
     } else if (cacheValue === 'null') {
-      throw new BadRequestException('해당 스트리머는 트게더 회원이 아닙니다.');
+      throw new NotFoundException(
+        '해당 스트리머는 트게더 게시판을 보유하고 있지 않습니다.',
+      );
     }
 
     const tgdResponse = await axios
@@ -160,13 +163,15 @@ export class StreamerService {
         } else {
           this.redisClient.set(cacheKey, 'null', 'EX', 60 * 60 * 24 * 30);
           throw new NotFoundException(
-            '해당 스트리머는 트게더 회원이 아닙니다.',
+            '해당 스트리머는 트게더 게시판을 보유하고 있지 않습니다.',
           );
         }
       })
       .catch((error) => {
         this.redisClient.set(cacheKey, 'null', 'EX', 60 * 60 * 24 * 30);
-        throw new NotFoundException('해당 스트리머는 트게더 회원이 아닙니다.');
+        throw new NotFoundException(
+          '해당 스트리머는 트게더 게시판을 보유하고 있지 않습니다.',
+        );
       });
 
     return tgdResponse;
