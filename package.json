@@ -28,6 +28,7 @@
     "@nestjs/platform-express": "^8.0.0",
     "@nestjs/sequelize": "^9.0.0",
     "@nestjs/swagger": "^6.1.2",
+    "@sentry/node": "^7.14.2",
     "@types/sequelize": "^4.28.14",
     "class-validator": "^0.13.2",
     "ioredis": "^5.2.3",
