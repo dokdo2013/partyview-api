@@ -24,6 +24,7 @@ import { StreamerModule } from './streamer/streamer.module';
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_DATABASE,
+      timezone: 'Asia/Seoul',
     }),
     RedisModule.forRoot({
       config: {

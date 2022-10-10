@@ -205,3 +205,27 @@ export class TgdException<T> implements CommonExceptionDto {
   @ApiProperty({ example: 'Not Found' })
   error: string;
 }
+
+export class LinkNotFoundExceptionType<T> implements CommonExceptionDto {
+  @ApiProperty({ example: 404 })
+  statusCode: number;
+
+  @ApiProperty()
+  message: T;
+
+  @ApiProperty({ example: 'Not Found' })
+  error: string;
+}
+
+export class LinkUnprocessableEntityExceptionType<T>
+  implements CommonExceptionDto
+{
+  @ApiProperty({ example: 422 })
+  statusCode: number;
+
+  @ApiProperty()
+  message: T;
+
+  @ApiProperty({ example: 'Not Found' })
+  error: string;
+}
