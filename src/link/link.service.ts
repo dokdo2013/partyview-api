@@ -169,9 +169,11 @@ export class LinkService {
     }
 
     // 4. key 먼저 link db에 저장
+    const xForwardedFor = req.headers['x-forwarded-for'];
+    const userIp = xForwardedFor ? xForwardedFor.split(',')[0] : ip;
     const linkCreate = {
       key,
-      userIp: ip,
+      userIp: userIp,
       userAgent: req.headers['user-agent'],
     };
     await this.linkModel.create(linkCreate);
